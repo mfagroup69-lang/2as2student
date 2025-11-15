@@ -133,11 +133,6 @@
   <script>
     const API_URL = "https://zkr-495g.onrender.com/tasks";
     const CODE = "ran/ran*78";
-function ensureUniqueId(task) {
-if (!task.id) {
-task.id = "task-" + Math.random().toString(36).substr(2, 9);
-}
-return task.id;
 }
     // 🔐 كود التفعيل
     async function checkCode() {
@@ -155,15 +150,23 @@ return task.id;
 
     // 🧾 تحميل المهام
     async function loadTasks(showNotify = false) {
-      try {
-        const res = await fetch(API_URL);
-        const tasks = await res.json();
-        displayTasks(tasks);
-        checkForNewTasks(tasks, showNotify);
-      } catch (err) {
-        console.error("خطأ في تحميل المهام:", err);
-      }
-    }
+  try {
+    const res = await fetch(API_URL);
+    let tasks = await res.json();
+
+    // 🟠 هنا نضمن أن كل مهمة تملك ID خاص بها
+    tasks = tasks.map(task => {
+      ensureUniqueId(task);   // إذا لا يوجد ID → يتم إنشاؤه
+      return task;
+    });
+
+    displayTasks(tasks);
+    checkForNewTasks(tasks, showNotify);
+
+  } catch (err) {
+    console.error("خطأ في تحميل المهام:", err);
+  }
+}
 
     // 🖼️ عرض المهام (تم إصلاح مشكلة checkbox هنا فقط)
     function displayTasks(tasks) {
@@ -272,5 +275,6 @@ return task.id;
   </script>
 </body>
 </html>
+
 
 
