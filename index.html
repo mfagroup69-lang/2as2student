@@ -1,181 +1,187 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ذكرني - المهام</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إدارة المهام</title>
 
   <style>
-    * { box-sizing: border-box; font-family: "Tajawal", sans-serif; margin: 0; padding: 0; }
-    body { background: #fff7f0; color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-    header { width: 100%; background-color: #ff8800; color: white; padding: 15px; text-align: center; font-size: 1.5rem; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    main { width: 100%; max-width: 500px; margin-top: 20px; padding: 10px; }
-    .section-title { font-weight: bold; margin: 10px 0; color: #ff8800; font-size: 1.2rem; }
-    ul { list-style: none; padding: 0; }
-    li { background: white; border-radius: 12px; padding: 12px; margin: 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s; }
-    li:hover { transform: scale(1.02); }
-    .done { text-decoration: line-through; color: gray; opacity: 0.7; }
-    button { background-color: #ff8800; color: white; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; margin-top: 10px; font-size: 1rem; }
-    button:hover { background-color: #ff9900; }
-    nav { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
-    .hidden { display: none; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Tahoma", sans-serif;
+      background: #ffffff;
+      color: #333;
+    }
+
+    header {
+      background: #ff7a00;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .tabs {
+      display: flex;
+      background: #fff2e6;
+      border-bottom: 2px solid #ff7a00;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: bold;
+      color: #ff7a00;
+      border-left: 1px solid #ffd2a8;
+    }
+
+    .tab.active {
+      background: #ff7a00;
+      color: white;
+    }
+
+    #tasksContainer {
+      padding: 15px;
+    }
+
+    .taskItem {
+      padding: 12px;
+      background: #fff7f0;
+      border: 1px solid #ff7a00;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .taskItem input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+    }
+
+    #refreshBtn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #ff7a00;
+      color: white;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      box-shadow: 0px 3px 8px rgba(0,0,0,0.25);
+    }
   </style>
 </head>
-
 <body>
 
-  <header>📋 مهامي</header>
+<header>📋 إدارة المهام</header>
 
-  <main>
-    <nav>
-      <button id="showTasks">📝 المهام</button>
-      <button id="showDone">📘 السجل</button>
-      <button id="refresh">🔄 تحديث</button>
-    </nav>
+<div class="tabs">
+  <div class="tab active" id="newTasksTab">المهام الجديدة</div>
+  <div class="tab" id="historyTab">السجل</div>
+</div>
 
-    <section id="tasks-section">
-      <h2 class="section-title">المهام الجديدة</h2>
-      <ul id="taskList"></ul>
-    </section>
+<div id="tasksContainer">جاري تحميل المهام...</div>
 
-    <section id="done-section" class="hidden">
-      <h2 class="section-title">المهام المنجزة</h2>
-      <ul id="doneList"></ul>
-    </section>
-  </main>
+<button id="refreshBtn">🔄 تحديث</button>
 
-  <script>
-    const API_URL = "https://zkr-495g.onrender.com/tasks";
-    const CODE = "ran/ran*78";
+<script>
+  const API_URL = "https://zkr-495g.onrender.com/tasks";
 
-    // 🔐 التحقق من الكود
-    async function checkCode() {
-      const saved = sessionStorage.getItem("authCode");
-      if (saved !== CODE) {
-        const entered = prompt("🟠 أدخل كود التفعيل:");
-        if (entered === CODE) sessionStorage.setItem("authCode", CODE);
-        else { alert("❌ كود خاطئ!"); location.reload(); }
-      }
+  let tasks = [];
+  let history = [];
+  let activeTab = "new";
+
+  async function fetchTasks() {
+    try {
+      const res = await fetch(API_URL, { cache: "no-store" });
+      const data = await res.json();
+
+      // السماح بمهام مكررة دون دمجها
+      tasks = data.filter(t => !t.completed);
+      history = data.filter(t => t.completed);
+
+      renderTasks();
+    } catch (error) {
+      document.getElementById("tasksContainer").innerHTML = "⚠️ خطأ في تحميل المهام";
+    }
+  }
+
+  function renderTasks() {
+    const container = document.getElementById("tasksContainer");
+    container.innerHTML = "";
+
+    const list = activeTab === "new" ? tasks : history;
+
+    if (list.length === 0) {
+      container.innerHTML = activeTab === "new" ? "لا توجد مهام حالياً" : "لا يوجد سجل";
+      return;
     }
 
-    // 🧾 تحميل المهام
-    async function loadTasks(showNotify = false) {
-      try {
-        const res = await fetch(API_URL + "?_=" + Date.now(), { cache: "no-store" });
-        if (!res.ok) throw new Error("خطأ في الخادم");
+    list.forEach(task => {
+      const div = document.createElement("div");
+      div.className = "taskItem";
 
-        const tasks = await res.json();
-        displayTasks(tasks);
-        checkNewNotifications(tasks, showNotify);
+      const label = document.createElement("span");
+      label.textContent = task.text;
 
-      } catch (err) {
-        console.error("خطأ:", err);
-      }
-    }
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
 
-    // 🖼️ عرض المهام الجديدة
-    function displayTasks(tasks) {
-      const taskList = document.getElementById("taskList");
-      taskList.innerHTML = "";
+      if (activeTab === "history") checkbox.disabled = true;
 
-      const done = JSON.parse(localStorage.getItem("doneTasks") || "[]");
-
-      tasks.forEach(task => {
-        const key = generateKey(task);
-
-        if (!done.includes(key)) {
-          const li = document.createElement("li");
-
-          li.innerHTML = `
-            <div>
-              <strong>${task.subject || "بدون مادة"}</strong><br>
-              ${task.text || ""}
-            </div>
-            <input type="checkbox">
-          `;
-
-          li.querySelector("input").addEventListener("change", () =>
-            markDone(task)
-          );
-
-          taskList.appendChild(li);
-        }
+      checkbox.addEventListener("change", async () => {
+        await markAsCompleted(task.id);
       });
 
-      displayDoneTasks();
-    }
+      div.appendChild(label);
+      div.appendChild(checkbox);
+      container.appendChild(div);
+    });
+  }
 
-    // 🌟 مولد مفتاح فريد للمهمة (بديل عن ID)
-    function generateKey(task) {
-      return (task.subject || "") + "___" + (task.text || "");
-    }
+  async function markAsCompleted(id) {
+    await fetch(`${API_URL}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completed: true })
+    });
+    fetchTasks();
+    switchToHistory();
+  }
 
-    // ✅ تعليم مهمه كمنجزة
-    function markDone(task) {
-      const done = JSON.parse(localStorage.getItem("doneTasks") || "[]");
-      const key = generateKey(task);
+  function switchToNew() {
+    activeTab = "new";
+    document.getElementById("newTasksTab").classList.add("active");
+    document.getElementById("historyTab").classList.remove("active");
+    renderTasks();
+  }
 
-      if (!done.includes(key)) {
-        done.push(key);
-        localStorage.setItem("doneTasks", JSON.stringify(done));
-        loadTasks();
-      }
-    }
+  function switchToHistory() {
+    activeTab = "history";
+    document.getElementById("historyTab").classList.add("active");
+    document.getElementById("newTasksTab").classList.remove("active");
+    renderTasks();
+  }
 
-    // 📘 عرض المهام المنجزة
-    function displayDoneTasks() {
-      const doneList = document.getElementById("doneList");
-      const done = JSON.parse(localStorage.getItem("doneTasks") || "[]");
+  document.getElementById("newTasksTab").onclick = switchToNew;
+  document.getElementById("historyTab").onclick = switchToHistory;
+  document.getElementById("refreshBtn").onclick = fetchTasks;
 
-      doneList.innerHTML = "";
+  // تحديث مستمر بدون وقت معين (Real-time listening)
+  setInterval(fetchTasks, 3000);
 
-      fetch(API_URL + "?_=" + Date.now())
-        .then(r => r.json())
-        .then(tasks => {
-          tasks.forEach(t => {
-            const key = generateKey(t);
-            if (done.includes(key)) {
-              const li = document.createElement("li");
-              li.classList.add("done");
-              li.textContent = `${t.subject || "بدون مادة"} - ${t.text}`;
-              doneList.appendChild(li);
-            }
-          });
-        });
-    }
-
-    // 🔔 إشعارات
-    function checkNewNotifications(tasks, showNotify) {
-      if (!showNotify || Notification.permission !== "granted") return;
-
-      if (tasks.length > (window.lastCount || 0)) {
-        const t = tasks[tasks.length - 1];
-        new Notification("📚 مهمة جديدة", {
-          body: `${t.subject}: ${t.text}`,
-          icon: "https://cdn-icons-png.flaticon.com/512/4712/4712107.png"
-        });
-      }
-
-      window.lastCount = tasks.length;
-    }
-
-    // 🧭 التنقل
-    showTasks.onclick = () => {
-      tasks-section.classList.remove("hidden");
-      done-section.classList.add("hidden");
-    };
-    showDone.onclick = () => {
-      done-section.classList.remove("hidden");
-      tasks-section.classList.add("hidden");
-    };
-    refresh.onclick = () => loadTasks(true);
-
-    // 🚀 تشغيل
-    checkCode();
-    Notification.requestPermission();
-    loadTasks();
-    setInterval(() => loadTasks(true), 15000);
-  </script>
+  fetchTasks();
+</script>
 
 </body>
 </html>
