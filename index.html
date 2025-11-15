@@ -1,4 +1,4 @@
-=<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
@@ -161,7 +161,7 @@
       }
     }
 
-    // 🖼️ عرض المهام (تم إصلاح مشكلة checkbox هنا فقط)
+    // 🖼️ عرض المهام (مع حل مشكلة ID المتكرر)
     function displayTasks(tasks) {
       const taskList = document.getElementById("taskList");
       taskList.innerHTML = "";
@@ -169,7 +169,9 @@
       const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
 
       tasks.forEach(task => {
-        if (!doneTasks.includes(task.id)) {
+        const key = `${task.id}-${task.text}`;
+
+        if (!doneTasks.includes(key)) {
           const li = document.createElement("li");
 
           const content = document.createElement("div");
@@ -180,11 +182,9 @@
 
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
-          checkbox.dataset.id = task.id;
 
-          // ✔️ الحل: ربط الحدث مباشرة على كل checkbox
           checkbox.addEventListener("change", () => {
-            markDone(task.id);
+            markDone(key);
           });
 
           li.appendChild(content);
@@ -196,15 +196,16 @@
       displayDoneTasks();
     }
 
-    // ✅ تعليم كمهمة منجزة
-    function markDone(id) {
+    // ✅ نقل المهمة إلى السجل
+    function markDone(key) {
       const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
-      if (!doneTasks.includes(id)) {
-        doneTasks.push(id);
+
+      if (!doneTasks.includes(key)) {
+        doneTasks.push(key);
         localStorage.setItem("doneTasks", JSON.stringify(doneTasks));
-        displayDoneTasks();
-        loadTasks();
       }
+
+      loadTasks();
     }
 
     // 📘 عرض المهام المنجزة
@@ -216,25 +217,27 @@
       fetch(API_URL)
         .then(res => res.json())
         .then(tasks => {
-          tasks
-            .filter(t => doneTasks.includes(t.id))
-            .forEach(task => {
+          tasks.forEach(task => {
+            const key = `${task.id}-${task.text}`;
+
+            if (doneTasks.includes(key)) {
               const li = document.createElement("li");
               li.classList.add("done");
               li.textContent = `${task.subject || "بدون مادة"} - ${task.text}`;
               doneList.appendChild(li);
-            });
+            }
+          });
         });
     }
 
-    // 🔔 طلب إذن الإشعارات
+    // 🔔 الإشعارات
     function askNotificationPermission() {
       if (Notification.permission === "default") {
         Notification.requestPermission();
       }
     }
 
-    // 🚨 إشعار بالمهام الجديدة
+    // 🚨 إشعار المهام الجديدة
     let lastTaskCount = 0;
     function checkForNewTasks(tasks, showNotify) {
       if (showNotify && Notification.permission === "granted") {
@@ -249,18 +252,20 @@
       lastTaskCount = tasks.length;
     }
 
-    // 🧭 أزرار التنقل
+    // 🧭 التنقل
     document.getElementById("showTasks").onclick = () => {
       document.getElementById("tasks-section").classList.remove("hidden");
       document.getElementById("done-section").classList.add("hidden");
     };
+
     document.getElementById("showDone").onclick = () => {
       document.getElementById("done-section").classList.remove("hidden");
       document.getElementById("tasks-section").classList.add("hidden");
     };
+
     document.getElementById("refresh").onclick = () => loadTasks(true);
 
-    // 🚀 بداية التشغيل
+    // 🚀 البداية
     checkCode();
     askNotificationPermission();
     loadTasks();
