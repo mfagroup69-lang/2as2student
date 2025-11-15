@@ -134,7 +134,12 @@
   <script>
     const API_URL = "https://zkr-495g.onrender.com/tasks";
     const CODE = "ran/ran*78";
-
+function ensureUniqueId(task) {
+if (!task.id) {
+task.id = "task-" + Math.random().toString(36).substr(2, 9);
+}
+return task.id;
+}
     // 🔐 كود التفعيل
     async function checkCode() {
       let entered = sessionStorage.getItem("authCode");
@@ -268,3 +273,4 @@
   </script>
 </body>
 </html>
+
