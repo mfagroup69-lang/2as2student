@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+=<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
@@ -161,7 +161,7 @@
       }
     }
 
-    // 🖼️ عرض المهام
+    // 🖼️ عرض المهام (تم إصلاح مشكلة checkbox هنا فقط)
     function displayTasks(tasks) {
       const taskList = document.getElementById("taskList");
       taskList.innerHTML = "";
@@ -171,21 +171,26 @@
       tasks.forEach(task => {
         if (!doneTasks.includes(task.id)) {
           const li = document.createElement("li");
-          li.innerHTML = `
-            <div>
-              <strong>${task.subject || "بدون مادة"}</strong><br>
-              ${task.text || ""}
-            </div>
-            <input type="checkbox" data-id="${task.id}">
+
+          const content = document.createElement("div");
+          content.innerHTML = `
+            <strong>${task.subject || "بدون مادة"}</strong><br>
+            ${task.text || ""}
           `;
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.dataset.id = task.id;
+
+          // ✔️ الحل: ربط الحدث مباشرة على كل checkbox
+          checkbox.addEventListener("change", () => {
+            markDone(task.id);
+          });
+
+          li.appendChild(content);
+          li.appendChild(checkbox);
           taskList.appendChild(li);
         }
-      });
-
-      document.querySelectorAll("input[type='checkbox']").forEach(cb => {
-        cb.addEventListener("change", (e) => {
-          if (e.target.checked) markDone(e.target.dataset.id);
-        });
       });
 
       displayDoneTasks();
@@ -211,12 +216,14 @@
       fetch(API_URL)
         .then(res => res.json())
         .then(tasks => {
-          tasks.filter(t => doneTasks.includes(t.id)).forEach(task => {
-            const li = document.createElement("li");
-            li.classList.add("done");
-            li.textContent = `${task.subject || "بدون مادة"} - ${task.text}`;
-            doneList.appendChild(li);
-          });
+          tasks
+            .filter(t => doneTasks.includes(t.id))
+            .forEach(task => {
+              const li = document.createElement("li");
+              li.classList.add("done");
+              li.textContent = `${task.subject || "بدون مادة"} - ${task.text}`;
+              doneList.appendChild(li);
+            });
         });
     }
 
