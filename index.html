@@ -1,187 +1,270 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>إدارة المهام</title>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ذكرني - المهام</title>
   <style>
-    body {
+    * {
+      box-sizing: border-box;
+      font-family: "Tajawal", sans-serif;
       margin: 0;
       padding: 0;
-      font-family: "Tahoma", sans-serif;
-      background: #ffffff;
+    }
+
+    body {
+      background: #fff7f0;
       color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
     }
 
     header {
-      background: #ff7a00;
+      width: 100%;
+      background-color: #ff8800;
       color: white;
       padding: 15px;
       text-align: center;
-      font-size: 22px;
+      font-size: 1.5rem;
       font-weight: bold;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
 
-    .tabs {
-      display: flex;
-      background: #fff2e6;
-      border-bottom: 2px solid #ff7a00;
+    main {
+      width: 100%;
+      max-width: 500px;
+      margin-top: 20px;
+      padding: 10px;
     }
 
-    .tab {
-      flex: 1;
-      padding: 12px;
-      text-align: center;
-      cursor: pointer;
+    .section-title {
       font-weight: bold;
-      color: #ff7a00;
-      border-left: 1px solid #ffd2a8;
+      margin: 10px 0;
+      color: #ff8800;
+      font-size: 1.2rem;
     }
 
-    .tab.active {
-      background: #ff7a00;
-      color: white;
+    ul {
+      list-style: none;
+      padding: 0;
     }
 
-    #tasksContainer {
-      padding: 15px;
-    }
-
-    .taskItem {
+    li {
+      background: white;
+      border-radius: 12px;
       padding: 12px;
-      background: #fff7f0;
-      border: 1px solid #ff7a00;
-      border-radius: 8px;
+      margin: 8px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
-      font-size: 18px;
+      transition: transform 0.2s;
     }
 
-    .taskItem input[type="checkbox"] {
-      width: 22px;
-      height: 22px;
-      cursor: pointer;
+    li:hover {
+      transform: scale(1.02);
     }
 
-    #refreshBtn {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      background: #ff7a00;
+    .done {
+      text-decoration: line-through;
+      color: gray;
+      opacity: 0.7;
+    }
+
+    button {
+      background-color: #ff8800;
       color: white;
       border: none;
-      padding: 12px 18px;
       border-radius: 8px;
+      padding: 8px 14px;
       cursor: pointer;
-      font-size: 16px;
-      box-shadow: 0px 3px 8px rgba(0,0,0,0.25);
+      margin-top: 10px;
+      font-size: 1rem;
+    }
+
+    button:hover {
+      background-color: #ff9900;
+    }
+
+    nav {
+      margin-top: 15px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        font-size: 1.2rem;
+      }
+      li {
+        flex-direction: column;
+        align-items: flex-start;
+      }
     }
   </style>
 </head>
 <body>
+  <header>📋 مهامي</header>
 
-<header>📋 إدارة المهام</header>
+  <main>
+    <nav>
+      <button id="showTasks">📝 المهام</button>
+      <button id="showDone">📘 السجل</button>
+      <button id="refresh">🔄 تحديث</button>
+    </nav>
 
-<div class="tabs">
-  <div class="tab active" id="newTasksTab">المهام الجديدة</div>
-  <div class="tab" id="historyTab">السجل</div>
-</div>
+    <section id="tasks-section">
+      <h2 class="section-title">المهام الجديدة</h2>
+      <ul id="taskList"></ul>
+    </section>
 
-<div id="tasksContainer">جاري تحميل المهام...</div>
+    <section id="done-section" class="hidden">
+      <h2 class="section-title">المهام المنجزة</h2>
+      <ul id="doneList"></ul>
+    </section>
+  </main>
 
-<button id="refreshBtn">🔄 تحديث</button>
+  <script>
+    const API_URL = "https://zkr-495g.onrender.com/tasks";
+    const CODE = "ran/ran*78";
 
-<script>
-  const API_URL = "https://zkr-495g.onrender.com/tasks";
-
-  let tasks = [];
-  let history = [];
-  let activeTab = "new";
-
-  async function fetchTasks() {
-    try {
-      const res = await fetch(API_URL, { cache: "no-store" });
-      const data = await res.json();
-
-      // السماح بمهام مكررة دون دمجها
-      tasks = data.filter(t => !t.completed);
-      history = data.filter(t => t.completed);
-
-      renderTasks();
-    } catch (error) {
-      document.getElementById("tasksContainer").innerHTML = "⚠️ خطأ في تحميل المهام";
-    }
-  }
-
-  function renderTasks() {
-    const container = document.getElementById("tasksContainer");
-    container.innerHTML = "";
-
-    const list = activeTab === "new" ? tasks : history;
-
-    if (list.length === 0) {
-      container.innerHTML = activeTab === "new" ? "لا توجد مهام حالياً" : "لا يوجد سجل";
-      return;
+    // 🔐 كود التفعيل
+    async function checkCode() {
+      let entered = sessionStorage.getItem("authCode");
+      if (entered !== CODE) {
+        entered = prompt("🟠 أدخل كود التفعيل:");
+        if (entered === CODE) {
+          sessionStorage.setItem("authCode", CODE);
+        } else {
+          alert("❌ كود خاطئ!");
+          location.reload();
+        }
+      }
     }
 
-    list.forEach(task => {
-      const div = document.createElement("div");
-      div.className = "taskItem";
+    // 🧾 تحميل المهام
+    async function loadTasks(showNotify = false) {
+      try {
+        const res = await fetch(API_URL);
+        const tasks = await res.json();
+        displayTasks(tasks);
+        checkForNewTasks(tasks, showNotify);
+      } catch (err) {
+        console.error("خطأ في تحميل المهام:", err);
+      }
+    }
 
-      const label = document.createElement("span");
-      label.textContent = task.text;
+    // 🖼️ عرض المهام (تم إصلاح مشكلة checkbox هنا فقط)
+    function displayTasks(tasks) {
+      const taskList = document.getElementById("taskList");
+      taskList.innerHTML = "";
 
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
+      const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
 
-      if (activeTab === "history") checkbox.disabled = true;
+      tasks.forEach(task => {
+        if (!doneTasks.includes(task.id)) {
+          const li = document.createElement("li");
 
-      checkbox.addEventListener("change", async () => {
-        await markAsCompleted(task.id);
+          const content = document.createElement("div");
+          content.innerHTML = `
+            <strong>${task.subject || "بدون مادة"}</strong><br>
+            ${task.text || ""}
+          `;
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.dataset.id = task.id;
+
+          // ✔️ الحل: ربط الحدث مباشرة على كل checkbox
+          checkbox.addEventListener("change", () => {
+            markDone(task.id);
+          });
+
+          li.appendChild(content);
+          li.appendChild(checkbox);
+          taskList.appendChild(li);
+        }
       });
 
-      div.appendChild(label);
-      div.appendChild(checkbox);
-      container.appendChild(div);
-    });
-  }
+      displayDoneTasks();
+    }
 
-  async function markAsCompleted(id) {
-    await fetch(`${API_URL}/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ completed: true })
-    });
-    fetchTasks();
-    switchToHistory();
-  }
+    // ✅ تعليم كمهمة منجزة
+    function markDone(id) {
+      const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
+      if (!doneTasks.includes(id)) {
+        doneTasks.push(id);
+        localStorage.setItem("doneTasks", JSON.stringify(doneTasks));
+        displayDoneTasks();
+        loadTasks();
+      }
+    }
 
-  function switchToNew() {
-    activeTab = "new";
-    document.getElementById("newTasksTab").classList.add("active");
-    document.getElementById("historyTab").classList.remove("active");
-    renderTasks();
-  }
+    // 📘 عرض المهام المنجزة
+    function displayDoneTasks() {
+      const doneList = document.getElementById("doneList");
+      const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
+      doneList.innerHTML = "";
 
-  function switchToHistory() {
-    activeTab = "history";
-    document.getElementById("historyTab").classList.add("active");
-    document.getElementById("newTasksTab").classList.remove("active");
-    renderTasks();
-  }
+      fetch(API_URL)
+        .then(res => res.json())
+        .then(tasks => {
+          tasks
+            .filter(t => doneTasks.includes(t.id))
+            .forEach(task => {
+              const li = document.createElement("li");
+              li.classList.add("done");
+              li.textContent = `${task.subject || "بدون مادة"} - ${task.text}`;
+              doneList.appendChild(li);
+            });
+        });
+    }
 
-  document.getElementById("newTasksTab").onclick = switchToNew;
-  document.getElementById("historyTab").onclick = switchToHistory;
-  document.getElementById("refreshBtn").onclick = fetchTasks;
+    // 🔔 طلب إذن الإشعارات
+    function askNotificationPermission() {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
 
-  // تحديث مستمر بدون وقت معين (Real-time listening)
-  setInterval(fetchTasks, 3000);
+    // 🚨 إشعار بالمهام الجديدة
+    let lastTaskCount = 0;
+    function checkForNewTasks(tasks, showNotify) {
+      if (showNotify && Notification.permission === "granted") {
+        if (tasks.length > lastTaskCount) {
+          const newTask = tasks[tasks.length - 1];
+          new Notification("📚 مهمة جديدة", {
+            body: `📘 مادة: ${newTask.subject}\n✏️ ${newTask.text}`,
+            icon: "https://cdn-icons-png.flaticon.com/512/4712/4712107.png"
+          });
+        }
+      }
+      lastTaskCount = tasks.length;
+    }
 
-  fetchTasks();
-</script>
+    // 🧭 أزرار التنقل
+    document.getElementById("showTasks").onclick = () => {
+      document.getElementById("tasks-section").classList.remove("hidden");
+      document.getElementById("done-section").classList.add("hidden");
+    };
+    document.getElementById("showDone").onclick = () => {
+      document.getElementById("done-section").classList.remove("hidden");
+      document.getElementById("tasks-section").classList.add("hidden");
+    };
+    document.getElementById("refresh").onclick = () => loadTasks(true);
 
+    // 🚀 بداية التشغيل
+    checkCode();
+    askNotificationPermission();
+    loadTasks();
+    setInterval(() => loadTasks(true), 15000);
+  </script>
 </body>
 </html>
