@@ -4,272 +4,147 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ذكرني - المهام</title>
+
   <style>
-    * {
-      box-sizing: border-box;
+    body {
       font-family: "Tajawal", sans-serif;
+      background: #fff6ed;
       margin: 0;
       padding: 0;
-    }
-
-    body {
-      background: #fff7f0;
-      color: #333;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
+      text-align: center;
     }
 
     header {
-      width: 100%;
-      background-color: #ff8800;
+      background: #ff8800;
       color: white;
       padding: 15px;
-      text-align: center;
-      font-size: 1.5rem;
+      font-size: 22px;
       font-weight: bold;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
 
-    main {
-      width: 100%;
+    #taskList {
       max-width: 500px;
-      margin-top: 20px;
-      padding: 10px;
-    }
-
-    .section-title {
-      font-weight: bold;
-      margin: 10px 0;
-      color: #ff8800;
-      font-size: 1.2rem;
-    }
-
-    ul {
-      list-style: none;
+      margin: 20px auto;
       padding: 0;
+      list-style: none;
     }
 
     li {
       background: white;
-      border-radius: 12px;
-      padding: 12px;
-      margin: 8px 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: transform 0.2s;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: 0.2s;
     }
 
     li:hover {
-      transform: scale(1.02);
+      transform: scale(1.03);
+      background: #ffe7cc;
     }
 
-    .done {
-      text-decoration: line-through;
-      color: gray;
-      opacity: 0.7;
-    }
-
-    button {
-      background-color: #ff8800;
+    #refreshBtn {
+      background: #ff8800;
       color: white;
       border: none;
+      padding: 10px 20px;
       border-radius: 8px;
-      padding: 8px 14px;
+      font-size: 16px;
       cursor: pointer;
       margin-top: 10px;
-      font-size: 1rem;
-    }
-
-    button:hover {
-      background-color: #ff9900;
-    }
-
-    nav {
-      margin-top: 15px;
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    @media (max-width: 600px) {
-      header {
-        font-size: 1.2rem;
-      }
-      li {
-        flex-direction: column;
-        align-items: flex-start;
-      }
     }
   </style>
 </head>
+
 <body>
-  <header>📋 مهامي</header>
 
-  <main>
-    <nav>
-      <button id="showTasks">📝 المهام</button>
-      <button id="showDone">📘 السجل</button>
-      <button id="refresh">🔄 تحديث</button>
-    </nav>
+<header>📋 مهامي</header>
 
-    <section id="tasks-section">
-      <h2 class="section-title">المهام الجديدة</h2>
-      <ul id="taskList"></ul>
-    </section>
+<button id="refreshBtn">🔄 تحديث</button>
 
-    <section id="done-section" class="hidden">
-      <h2 class="section-title">المهام المنجزة</h2>
-      <ul id="doneList"></ul>
-    </section>
-  </main>
+<ul id="taskList"></ul>
 
-  <script>
-    const API_URL = "https://zkr-495g.onrender.com/tasks";
-    const CODE = "ran/ran*78";
+<script>
+  const API_URL = "https://zkr-495g.onrender.com/tasks";
+  const CODE = "ran/ran*78";
 
-    // 🔐 كود التفعيل
-    async function checkCode() {
-      let entered = sessionStorage.getItem("authCode");
-      if (entered !== CODE) {
-        entered = prompt("🟠 أدخل كود التفعيل:");
-        if (entered === CODE) {
-          sessionStorage.setItem("authCode", CODE);
-        } else {
-          alert("❌ كود خاطئ!");
-          location.reload();
-        }
+  // كود التفعيل
+  async function checkCode() {
+    let entered = sessionStorage.getItem("auth");
+
+    if (entered !== CODE) {
+      entered = prompt("🟠 أدخل كود التفعيل:");
+      if (entered === CODE) {
+        sessionStorage.setItem("auth", CODE);
+      } else {
+        alert("❌ كود خاطئ!");
+        location.reload();
       }
     }
+  }
 
-    // 🧾 تحميل المهام
-    async function loadTasks(showNotify = false) {
-      try {
-        const res = await fetch(API_URL);
-        const tasks = await res.json();
-        displayTasks(tasks);
-        checkForNewTasks(tasks, showNotify);
-      } catch (err) {
-        console.error("خطأ في تحميل المهام:", err);
+  // تخزين معرفات المهام المنتهية
+  function loadFinished() {
+    return JSON.parse(localStorage.getItem("finished") || "[]");
+  }
+
+  function saveFinished(list) {
+    localStorage.setItem("finished", JSON.stringify(list));
+  }
+
+  // تحميل المهام
+  async function loadTasks() {
+    try {
+      const res = await fetch(API_URL);
+      const tasks = await res.json();
+      displayTasks(tasks);
+    } catch (e) {
+      console.log("خطأ:", e);
+    }
+  }
+
+  // عرض المهام بدون سجل
+  function displayTasks(tasks) {
+    const finished = loadFinished();
+    const list = document.getElementById("taskList");
+    list.innerHTML = "";
+
+    tasks.forEach(task => {
+      const key = `${task.id}-${task.text}`;
+
+      if (!finished.includes(key)) {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <strong>${task.subject}</strong><br>
+          ${task.text}
+        `;
+
+        li.addEventListener("click", () => finishTask(key, li));
+
+        list.appendChild(li);
       }
-    }
+    });
+  }
 
-    // 🖼️ عرض المهام (مع حل مشكلة ID المتكرر)
-    function displayTasks(tasks) {
-      const taskList = document.getElementById("taskList");
-      taskList.innerHTML = "";
+  // إنهاء / حذف مهمة
+  function finishTask(key, element) {
+    const finished = loadFinished();
+    finished.push(key);
+    saveFinished(finished);
 
-      const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
+    element.style.opacity = "0";
+    setTimeout(() => element.remove(), 200);
+  }
 
-      tasks.forEach(task => {
-        const key = `${task.id}-${task.text}`;
+  document.getElementById("refreshBtn").onclick = () => loadTasks();
 
-        if (!doneTasks.includes(key)) {
-          const li = document.createElement("li");
+  // تشغيل أولي
+  checkCode();
+  loadTasks();
+  setInterval(loadTasks, 15000);
+</script>
 
-          const content = document.createElement("div");
-          content.innerHTML = `
-            <strong>${task.subject || "بدون مادة"}</strong><br>
-            ${task.text || ""}
-          `;
-
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-
-          checkbox.addEventListener("change", () => {
-            markDone(key);
-          });
-
-          li.appendChild(content);
-          li.appendChild(checkbox);
-          taskList.appendChild(li);
-        }
-      });
-
-      displayDoneTasks();
-    }
-
-    // ✅ نقل المهمة إلى السجل
-    function markDone(key) {
-      const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
-
-      if (!doneTasks.includes(key)) {
-        doneTasks.push(key);
-        localStorage.setItem("doneTasks", JSON.stringify(doneTasks));
-      }
-
-      loadTasks();
-    }
-
-    // 📘 عرض المهام المنجزة
-    function displayDoneTasks() {
-      const doneList = document.getElementById("doneList");
-      const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
-      doneList.innerHTML = "";
-
-      fetch(API_URL)
-        .then(res => res.json())
-        .then(tasks => {
-          tasks.forEach(task => {
-            const key = `${task.id}-${task.text}`;
-
-            if (doneTasks.includes(key)) {
-              const li = document.createElement("li");
-              li.classList.add("done");
-              li.textContent = `${task.subject || "بدون مادة"} - ${task.text}`;
-              doneList.appendChild(li);
-            }
-          });
-        });
-    }
-
-    // 🔔 الإشعارات
-    function askNotificationPermission() {
-      if (Notification.permission === "default") {
-        Notification.requestPermission();
-      }
-    }
-
-    // 🚨 إشعار المهام الجديدة
-    let lastTaskCount = 0;
-    function checkForNewTasks(tasks, showNotify) {
-      if (showNotify && Notification.permission === "granted") {
-        if (tasks.length > lastTaskCount) {
-          const newTask = tasks[tasks.length - 1];
-          new Notification("📚 مهمة جديدة", {
-            body: `📘 مادة: ${newTask.subject}\n✏️ ${newTask.text}`,
-            icon: "https://cdn-icons-png.flaticon.com/512/4712/4712107.png"
-          });
-        }
-      }
-      lastTaskCount = tasks.length;
-    }
-
-    // 🧭 التنقل
-    document.getElementById("showTasks").onclick = () => {
-      document.getElementById("tasks-section").classList.remove("hidden");
-      document.getElementById("done-section").classList.add("hidden");
-    };
-
-    document.getElementById("showDone").onclick = () => {
-      document.getElementById("done-section").classList.remove("hidden");
-      document.getElementById("tasks-section").classList.add("hidden");
-    };
-
-    document.getElementById("refresh").onclick = () => loadTasks(true);
-
-    // 🚀 البداية
-    checkCode();
-    askNotificationPermission();
-    loadTasks();
-    setInterval(() => loadTasks(true), 15000);
-  </script>
 </body>
 </html>
