@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ذكرني - المهام</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Tajawal", sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #fff7f0;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    header {
+      width: 100%;
+      background-color: #ff8800;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    main {
+      width: 100%;
+      max-width: 500px;
+      margin-top: 20px;
+      padding: 10px;
+    }
+
+    .section-title {
+      font-weight: bold;
+      margin: 10px 0;
+      color: #ff8800;
+      font-size: 1.2rem;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      margin: 8px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.2s;
+    }
+
+    li:hover {
+      transform: scale(1.02);
+    }
+
+    .done {
+      text-decoration: line-through;
+      color: gray;
+      opacity: 0.7;
+    }
+
+    button {
+      background-color: #ff8800;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      margin-top: 10px;
+      font-size: 1rem;
+    }
+
+    button:hover {
+      background-color: #ff9900;
+    }
+
+    nav {
+      margin-top: 15px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        font-size: 1.2rem;
+      }
+      li {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>📋 مهامي</header>
+
+  <main>
+    <nav>
+      <button id="showTasks">📝 المهام</button>
+      <button id="showDone">📘 السجل</button>
+      <button id="refresh">🔄 تحديث</button>
+    </nav>
+
+    <section id="tasks-section">
+      <h2 class="section-title">المهام الجديدة</h2>
+      <ul id="taskList"></ul>
+    </section>
+
+    <section id="done-section" class="hidden">
+      <h2 class="section-title">المهام المنجزة</h2>
+      <ul id="doneList"></ul>
+    </section>
+  </main>
+
+  <script>
+    const API_URL = "https://zkr-495g.onrender.com/tasks";
+    const CODE = "ran/ran*78";
+
+    // 🔐 كود التفعيل
+    async function checkCode() {
+      let entered = sessionStorage.getItem("authCode");
+      if (entered !== CODE) {
+        entered = prompt("🟠 أدخل كود التفعيل:");
+        if (entered === CODE) {
+          sessionStorage.setItem("authCode", CODE);
+        } else {
+          alert("❌ كود خاطئ!");
+          location.reload();
+        }
+      }
+    }
+
+    // 🧾 تحميل المهام
+    async function loadTasks(showNotify = false) {
+      try {
+        const res = await fetch(API_URL);
+        const tasks = await res.json();
+        displayTasks(tasks);
+        checkForNewTasks(tasks, showNotify);
+      } catch (err) {
+        console.error("خطأ في تحميل المهام:", err);
+      }
+    }
+
+    // 🖼️ عرض المهام
+    function displayTasks(tasks) {
+      const taskList = document.getElementById("taskList");
+      taskList.innerHTML = "";
+
+      const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
+
+      tasks.forEach(task => {
+        if (!doneTasks.includes(task.id)) {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div>
+              <strong>${task.subject || "بدون مادة"}</strong><br>
+              ${task.text || ""}
+            </div>
+            <input type="checkbox" data-id="${task.id}">
+          `;
+          taskList.appendChild(li);
+        }
+      });
+
+      document.querySelectorAll("input[type='checkbox']").forEach(cb => {
+        cb.addEventListener("change", (e) => {
+          if (e.target.checked) markDone(e.target.dataset.id);
+        });
+      });
+
+      displayDoneTasks();
+    }
+
+    // ✅ تعليم كمهمة منجزة
+    function markDone(id) {
+      const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
+      if (!doneTasks.includes(id)) {
+        doneTasks.push(id);
+        localStorage.setItem("doneTasks", JSON.stringify(doneTasks));
+        displayDoneTasks();
+        loadTasks();
+      }
+    }
+
+    // 📘 عرض المهام المنجزة
+    function displayDoneTasks() {
+      const doneList = document.getElementById("doneList");
+      const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
+      doneList.innerHTML = "";
+
+      fetch(API_URL)
+        .then(res => res.json())
+        .then(tasks => {
+          tasks.filter(t => doneTasks.includes(t.id)).forEach(task => {
+            const li = document.createElement("li");
+            li.classList.add("done");
+            li.textContent = `${task.subject || "بدون مادة"} - ${task.text}`;
+            doneList.appendChild(li);
+          });
+        });
+    }
+
+    // 🔔 طلب إذن الإشعارات
+    function askNotificationPermission() {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+
+    // 🚨 إشعار بالمهام الجديدة
+    let lastTaskCount = 0;
+    function checkForNewTasks(tasks, showNotify) {
+      if (showNotify && Notification.permission === "granted") {
+        if (tasks.length > lastTaskCount) {
+          const newTask = tasks[tasks.length - 1];
+          new Notification("📚 مهمة جديدة", {
+            body: `📘 مادة: ${newTask.subject}\n✏️ ${newTask.text}`,
+            icon: "https://cdn-icons-png.flaticon.com/512/4712/4712107.png"
+          });
+        }
+      }
+      lastTaskCount = tasks.length;
+    }
+
+    // 🧭 أزرار التنقل
+    document.getElementById("showTasks").onclick = () => {
+      document.getElementById("tasks-section").classList.remove("hidden");
+      document.getElementById("done-section").classList.add("hidden");
+    };
+    document.getElementById("showDone").onclick = () => {
+      document.getElementById("done-section").classList.remove("hidden");
+      document.getElementById("tasks-section").classList.add("hidden");
+    };
+    document.getElementById("refresh").onclick = () => loadTasks(true);
+
+    // 🚀 بداية التشغيل
+    checkCode();
+    askNotificationPermission();
+    loadTasks();
+    setInterval(() => loadTasks(true), 15000);
+  </script>
+</body>
+</html>
