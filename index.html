@@ -68,7 +68,8 @@
     }
 
     .done {
-      color: orange;
+      /* text-decoration removed */
+      color: gray;
       opacity: 0.7;
     }
 
@@ -133,8 +134,16 @@
   <script>
     const API_URL = "https://zkr-495g.onrender.com/tasks";
     const CODE = "ran/ran*78";
-}
-    // 🔐 كود التفعيل
+
+    // وظيفة إنشاء ID فريد لكل مهمة عند عرضها إذا لم يكن موجودًا أساسًا
+    function ensureUniqueId(task) {
+      if (!task.id) {
+        task.id = "task-" + Math.random().toString(36).substr(2, 9);
+      }
+      return task.id;
+    }
+
+    // كود التفعيل
     async function checkCode() {
       let entered = sessionStorage.getItem("authCode");
       if (entered !== CODE) {
@@ -148,27 +157,22 @@
       }
     }
 
-    // 🧾 تحميل المهام
+    // تحميل المهام
     async function loadTasks(showNotify = false) {
-  try {
-    const res = await fetch(API_URL);
-    let tasks = await res.json();
+      try {
+        const res = await fetch(API_URL);
+        const tasks = await res.json();
 
-    // 🟠 هنا نضمن أن كل مهمة تملك ID خاص بها
-    tasks = tasks.map(task => {
-      ensureUniqueId(task);   // إذا لا يوجد ID → يتم إنشاؤه
-      return task;
-    });
+        tasks.forEach(t => ensureUniqueId(t));
 
-    displayTasks(tasks);
-    checkForNewTasks(tasks, showNotify);
+        displayTasks(tasks);
+        checkForNewTasks(tasks, showNotify);
+      } catch (err) {
+        console.error("خطأ في تحميل المهام:", err);
+      }
+    }
 
-  } catch (err) {
-    console.error("خطأ في تحميل المهام:", err);
-  }
-}
-
-    // 🖼️ عرض المهام (تم إصلاح مشكلة checkbox هنا فقط)
+    // عرض المهام
     function displayTasks(tasks) {
       const taskList = document.getElementById("taskList");
       taskList.innerHTML = "";
@@ -176,22 +180,24 @@
       const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
 
       tasks.forEach(task => {
-        if (!doneTasks.includes(task.id)) {
+        const id = ensureUniqueId(task);
+
+        if (!doneTasks.includes(id)) {
           const li = document.createElement("li");
 
           const content = document.createElement("div");
           content.innerHTML = `
             <strong>${task.subject || "بدون مادة"}</strong><br>
-            ${task.text || ""}
+            ${task.text || ""}<br>
+            <span style="color:#555;font-size:0.85rem">ID: ${id}</span>
           `;
 
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
-          checkbox.dataset.id = task.id;
+          checkbox.dataset.id = id;
 
-          // ✔️ الحل: ربط الحدث مباشرة على كل checkbox
           checkbox.addEventListener("change", () => {
-            markDone(task.id);
+            markDone(id);
           });
 
           li.appendChild(content);
@@ -203,18 +209,17 @@
       displayDoneTasks();
     }
 
-    // ✅ تعليم كمهمة منجزة
+    // تعليم كمهمة منجزة
     function markDone(id) {
       const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
       if (!doneTasks.includes(id)) {
         doneTasks.push(id);
         localStorage.setItem("doneTasks", JSON.stringify(doneTasks));
-        displayDoneTasks();
         loadTasks();
       }
     }
 
-    // 📘 عرض المهام المنجزة
+    // عرض المهام المنجزة
     function displayDoneTasks() {
       const doneList = document.getElementById("doneList");
       const doneTasks = JSON.parse(localStorage.getItem("doneTasks") || "[]");
@@ -223,25 +228,30 @@
       fetch(API_URL)
         .then(res => res.json())
         .then(tasks => {
+          tasks.forEach(t => ensureUniqueId(t));
+
           tasks
             .filter(t => doneTasks.includes(t.id))
             .forEach(task => {
               const li = document.createElement("li");
               li.classList.add("done");
-              li.textContent = `${task.subject || "بدون مادة"} - ${task.text}`;
+              li.innerHTML = `
+                ${task.subject || "بدون مادة"} - ${task.text}<br>
+                <span style="color:#777;font-size:0.8rem">ID: ${task.id}</span>
+              `;
               doneList.appendChild(li);
             });
         });
     }
 
-    // 🔔 طلب إذن الإشعارات
+    // إذن الإشعارات
     function askNotificationPermission() {
       if (Notification.permission === "default") {
         Notification.requestPermission();
       }
     }
 
-    // 🚨 إشعار بالمهام الجديدة
+    // إشعارات المهام الجديدة
     let lastTaskCount = 0;
     function checkForNewTasks(tasks, showNotify) {
       if (showNotify && Notification.permission === "granted") {
@@ -256,7 +266,7 @@
       lastTaskCount = tasks.length;
     }
 
-    // 🧭 أزرار التنقل
+    // التنقل
     document.getElementById("showTasks").onclick = () => {
       document.getElementById("tasks-section").classList.remove("hidden");
       document.getElementById("done-section").classList.add("hidden");
@@ -267,7 +277,7 @@
     };
     document.getElementById("refresh").onclick = () => loadTasks(true);
 
-    // 🚀 بداية التشغيل
+    // تشغيل
     checkCode();
     askNotificationPermission();
     loadTasks();
@@ -275,6 +285,3 @@
   </script>
 </body>
 </html>
-
-
-
